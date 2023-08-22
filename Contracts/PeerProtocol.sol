@@ -3,8 +3,10 @@ pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
-interface IERC20 {
+
+interface TERC20 {
 
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
@@ -19,24 +21,20 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-contract PeerProtocol is Initializable, Ownable{ 
-
-    constructor() initializer  {
-
-        principalAmount = 0;
-        loanRate = 0;
-        loanPeriod = 0;
-
-    }
+contract PeerProtocol is Initializable, Ownable, ERC1155{ 
 
     mapping ( address => uint ) public balances;
     mapping ( address => uint ) public tokenId;
+    mapping ( address => uint ) public repayment;
 
-    uint tenthK = 10000;
-    uint dayConvention = 12;
+    uint private tenthK = 10000;
+    uint private dayConvention = 12;
+    uint private scconversion = 1000000000000000000;
 
+    TERC20 private token = TERC20(address(0x1BD7B233B054AD4D1FBb767eEa628f28fdE314c6));
     address public borrowerAdd;
     uint public principalLimit;
+    uint public drawnBalance;
     uint public originationRate;
     uint public peerRate;
     uint public loanRate;
@@ -47,6 +45,7 @@ contract PeerProtocol is Initializable, Ownable{
     uint public totalPayable;
     uint public feePayable; 
 
+    uint public monthlyFee;
     uint public monthlyRepayment;
 
     uint private currentTid = 0;
@@ -56,6 +55,13 @@ contract PeerProtocol is Initializable, Ownable{
 
     event createLoan( address borrower, uint amount, uint fee, uint rate, uint period);
     event Transfer( address _from, address _to, uint amount);
+    event drawnDown( address borrower, uint amount);
+
+    constructor() initializer ERC1155("https://peerhive-my.sharepoint.com/:v:/g/personal/vincent_yeo_peerhive_app/EbdXWCCR-8FMqP2Eljer6A0Bs1mFhRM8xQ62yxZKhZ9R7w?e=xvbMon") {
+        principalAmount = 0;
+        loanRate = 0;
+        loanPeriod = 0;
+    }
 
     function newLoan( address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate ) public onlyOwner {
 
@@ -63,6 +69,7 @@ contract PeerProtocol is Initializable, Ownable{
         require(peerIRate < rate && peerIRate >= 40, "Fee Payable for PeerRate must be less than lending rate offered and at least 40 BP (0.4%)");
         require(originateRate >= 50, "Origination fee must be at least 50 BP (0.5%)");
         require(period >= 1, "The loan period must be at least 1 Month");
+        
 
         borrowerAdd = borrower;
         principalLimit = amount;
@@ -77,14 +84,18 @@ contract PeerProtocol is Initializable, Ownable{
         emit createLoan(borrower, principalLimit, feePayable, rate, period);
     }
 
-    function joinLoan( uint amount ) public  {
-        require(loanStatus, "The loan is not created");
-        require(amount >= 0, " Please invest in the loan more than 1");
-        require(amount + principalAmount <= principalLimit, "You have exceeded the maximum principal of the loan");
-        
-        IERC20 token = IERC20(msg.sender);
-        require(token.balanceOf(msg.sender) >= amount, "You have insufficient amount");
 
+    function approve( uint amount) public returns (bool) {
+        token.approve(msg.sender, amount * scconversion);
+        return true;
+    }
+
+    function joinLoan( uint amount ) public {
+        require(loanStatus, "The loan is not created");
+        require(amount >= 1, " Please invest in the loan more than 1");
+        require(amount + principalAmount <= principalLimit, "You have exceeded the maximum principal of the loan");
+        require((token.balanceOf(msg.sender) / scconversion) >= amount, "Insufficient amount");
+        
         principalAmount += amount;
 
         uint originationNominal = ( amount * originationRate ) / tenthK;
@@ -96,17 +107,38 @@ contract PeerProtocol is Initializable, Ownable{
         principalPayable += principalInt;
 
         totalPayable = feePayable + principalPayable;
-        monthlyRepayment += totalPayable / loanPeriod;
+        monthlyRepayment = totalPayable / loanPeriod;
         currentTid += 1;
 
         balances[msg.sender] += amount;
         tokenId[msg.sender] = currentTid;
+        repayment[msg.sender] = principalInt / loanPeriod;
+        monthlyFee = feePayable / loanPeriod;
 
-        token.transfer(address(this), amount);
+        token.transferFrom(msg.sender, address(this), amount * scconversion);
         
         _transfer(msg.sender, borrowerAdd, amount);
+        emit Transfer( msg.sender, address(this), amount);
+    }
 
-        emit Transfer(address(0), msg.sender, amount);
+    function loanDrawn( uint amount ) public {
+        require( loanStatus, "The loan is active");
+        require( amount >= 1, "Please withdraw amount more than 1");
+        require( amount <= balances[msg.sender], "You have entered an amount more than your balance");
+        require( (token.balanceOf(address(this)) / scconversion ) >= amount, "Insufficient withdrawal amount");
+        require( ((principalAmount * tenthK ) / principalLimit ) >= 8000, "Loan participation is less than 80%");
+
+        drawnBalance += amount;
+        token.transfer(msg.sender, amount * scconversion);
+        // add in approval for repayment purpose token.approve(msg.sender, address(this), amount * scconversion);
+        emit drawnDown(msg.sender, amount);
+    }
+
+    function repayLoan( uint amount ) public {
+        require(token.allowance(msg.sender, address(this)) >= amount, "You have not approved the necessary amount for payment");
+        require(token.balanceOf(msg.sender) >= amount, "You don't have sufficient amount in your stablecoin");
+        
+        token.transferFrom(msg.sender, address(this), amount);
     }
 
     function _transfer(address from, address to, uint256 amount) internal {
@@ -115,13 +147,5 @@ contract PeerProtocol is Initializable, Ownable{
         emit Transfer(from, to, amount);
     }
 
-    function repayment( address borrower, uint amount ) public {
-        require( amount >= ( monthlyRepayment * 8000 ) / 10000, "Please pay at least 80% of the required amount");
-        totalPayable -= amount;
-        loanPeriod -= 1;
-
-        balances[borrower] += amount;
-
-    }
 }
 

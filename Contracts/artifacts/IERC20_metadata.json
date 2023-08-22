@@ -204,7 +204,7 @@
 		"compilationTarget": {
 			"Contracts/PeerProtocol.sol": "IERC20"
 		},
-		"evmVersion": "shanghai",
+		"evmVersion": "paris",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
@@ -249,11 +249,11 @@
 			]
 		},
 		"Contracts/PeerProtocol.sol": {
-			"keccak256": "0x766df28ee0507d0a316fb6d6ce5be97a4e77df8437b17b36689cfc2288c307db",
+			"keccak256": "0x42747e153ce8575cf7525503c30ec8308745ac9258ae73785c56a35ca900502f",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://769c72903bb9e125a57dd6f158c38048ee7bb11de1950ef71bf9070d4417ac8e",
-				"dweb:/ipfs/QmdP5jMxNr9dMRZC5DLkTBgnycLsQcwrcoDiR2kCMET663"
+				"bzz-raw://5649808c92a1c8b8fda8c13d6855843391d8609f5bdbe15b55d823d7485da148",
+				"dweb:/ipfs/QmfK1Sj7KuAzydW43sx2zTcAiKsuBgAoRsm4Gjtq5Uxzig"
 			]
 		}
 	},
