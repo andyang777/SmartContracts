@@ -242,6 +242,25 @@
 				"type": "event"
 			},
 			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "borrower",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "repayLoan",
+				"type": "event"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -456,6 +475,19 @@
 				"type": "function"
 			},
 			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "loanRepayment",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
 				"inputs": [],
 				"name": "loanStatus",
 				"outputs": [
@@ -530,6 +562,19 @@
 				"name": "newLoan",
 				"outputs": [],
 				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "originationNominal",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -613,19 +658,6 @@
 			{
 				"inputs": [],
 				"name": "renounceOwnership",
-				"outputs": [],
-				"stateMutability": "nonpayable",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "uint256",
-						"name": "amount",
-						"type": "uint256"
-					}
-				],
-				"name": "repayLoan",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -883,7 +915,7 @@
 		"compilationTarget": {
 			"Contracts/PeerProtocol.sol": "PeerProtocol"
 		},
-		"evmVersion": "shanghai",
+		"evmVersion": "paris",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
@@ -984,11 +1016,11 @@
 			]
 		},
 		"Contracts/PeerProtocol.sol": {
-			"keccak256": "0x8cbd432f8be37805dffa7e12ac3d778a9f77e1ca2b711fe2fbc8dcf32e3bfa71",
+			"keccak256": "0x5f4773f477d9c822401e74cdde5e78020157d2040475c01b6c6198241bdbe2d8",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://2696786edca27bdaa69133e1b3943c5b470177e07116f0635cb68df4103a49b5",
-				"dweb:/ipfs/QmaGEUmvssQRKi5QNXcdR9F1WXbmjZshnEuyW4tHJAmvz4"
+				"bzz-raw://9a399a3777de93ca0bfb1c72266fbdeabb89ce3056ac79fb82ed9a8e13ec924b",
+				"dweb:/ipfs/QmadR9gX8bAHLDkJSeb2fgr1viPhYCagCreNy5Q2aeJYXt"
 			]
 		}
 	},

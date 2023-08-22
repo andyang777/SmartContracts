@@ -52,10 +52,12 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
 
     bool public loanDefault;
     bool public loanStatus;
+    uint public originationNominal;
 
-    event createLoan( address borrower, uint amount, uint fee, uint rate, uint period);
-    event Transfer( address _from, address _to, uint amount);
-    event drawnDown( address borrower, uint amount);
+    event createLoan( address borrower, uint amount, uint fee, uint rate, uint period );
+    event Transfer( address _from, address _to, uint amount );
+    event drawnDown( address borrower, uint amount );
+    event repayLoan( address borrower, uint amount );
 
     constructor() initializer ERC1155("https://peerhive-my.sharepoint.com/:v:/g/personal/vincent_yeo_peerhive_app/EbdXWCCR-8FMqP2Eljer6A0Bs1mFhRM8xQ62yxZKhZ9R7w?e=xvbMon") {
         principalAmount = 0;
@@ -98,7 +100,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         
         principalAmount += amount;
 
-        uint originationNominal = ( amount * originationRate ) / tenthK;
+        originationNominal = ( amount * originationRate ) / tenthK;
         uint originationFee = ( originationNominal * ( 10000 + ( loanRate*loanPeriod ) / dayConvention )) / tenthK;
         uint peerFee =  ( amount * ((peerRate*loanPeriod)/dayConvention)) / tenthK;
         feePayable += peerFee + originationFee;
@@ -118,13 +120,13 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         token.transferFrom(msg.sender, address(this), amount * scconversion);
         
         _transfer(msg.sender, borrowerAdd, amount);
-        emit Transfer( msg.sender, address(this), amount);
+        emit Transfer( msg.sender, address(this), amount );
     }
 
-    function loanDrawn( uint amount ) public {
+    function loanDrawn( uint amount ) public onlyOwner {
         require( loanStatus, "The loan is active");
         require( amount >= 1, "Please withdraw amount more than 1");
-        require( amount <= balances[msg.sender], "You have entered an amount more than your balance");
+        require( balances[msg.sender] <= amount , "You have entered an amount more than your balance");
         require( (token.balanceOf(address(this)) / scconversion ) >= amount, "Insufficient withdrawal amount");
         require( ((principalAmount * tenthK ) / principalLimit ) >= 8000, "Loan participation is less than 80%");
 
@@ -134,11 +136,12 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         emit drawnDown(msg.sender, amount);
     }
 
-    function repayLoan( uint amount ) public {
+    function loanRepayment( uint amount ) public {
         require(token.allowance(msg.sender, address(this)) >= amount, "You have not approved the necessary amount for payment");
         require(token.balanceOf(msg.sender) >= amount, "You don't have sufficient amount in your stablecoin");
         
-        token.transferFrom(msg.sender, address(this), amount);
+        token.transferFrom(msg.sender, address(this), amount * scconversion);
+        emit repayLoan(msg.sender, amount);
     }
 
     function _transfer(address from, address to, uint256 amount) internal {
