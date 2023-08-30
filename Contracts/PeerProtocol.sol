@@ -11,7 +11,6 @@ interface TERC20 {
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
-
     function transfer(address recipient, uint256 amount) external returns (bool);
     function approve(address spender, uint256 amount) external returns (bool);
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -21,17 +20,18 @@ interface TERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-contract PeerProtocol is Initializable, Ownable, ERC1155{ 
+contract PeerProtocol is Initializable, Ownable, ERC1155{
 
+    mapping ( uint => address ) public tokenId;
     mapping ( address => uint ) public balances;
-    mapping ( address => uint ) public tokenId;
+    mapping ( address => uint ) public repaymentBalance;
     mapping ( address => uint ) public repayment;
 
     uint private tenthK = 10000;
     uint private dayConvention = 12;
     uint private scconversion = 1000000000000000000;
 
-    TERC20 private token = TERC20(address(0x1BD7B233B054AD4D1FBb767eEa628f28fdE314c6));
+    TERC20 private token = TERC20(address(0x1BD7B233B054AD4D1FBb767eEa628f28fdE314c6)); //USDT 
     address public borrowerAdd;
     uint public principalLimit;
     uint public drawnBalance;
@@ -48,21 +48,24 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     uint public monthlyFee;
     uint public monthlyRepayment;
 
-    uint private currentTid = 0;
+    uint public currentTid = 0;
 
     bool public loanDefault;
     bool public loanStatus;
     uint public originationNominal;
 
+
     event createLoan( address borrower, uint amount, uint fee, uint rate, uint period );
     event Transfer( address _from, address _to, uint amount );
+    event Withdrawal(address _to, uint amount);
     event drawnDown( address borrower, uint amount );
     event repayLoan( address borrower, uint amount );
 
-    constructor() initializer ERC1155("https://peerhive-my.sharepoint.com/:v:/g/personal/vincent_yeo_peerhive_app/EbdXWCCR-8FMqP2Eljer6A0Bs1mFhRM8xQ62yxZKhZ9R7w?e=xvbMon") {
+    constructor(string memory _uri) initializer ERC1155(_uri) {
         principalAmount = 0;
         loanRate = 0;
         loanPeriod = 0;
+        setURI(_uri);
     }
 
     function newLoan( address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate ) public onlyOwner {
@@ -112,14 +115,15 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         monthlyRepayment = totalPayable / loanPeriod;
         currentTid += 1;
 
-        balances[msg.sender] += amount;
-        tokenId[msg.sender] = currentTid;
+        tokenId[currentTid] = msg.sender;
+        balances[borrowerAdd] += amount;
+        repaymentBalance[msg.sender] += principalInt;
         repayment[msg.sender] = principalInt / loanPeriod;
+
         monthlyFee = feePayable / loanPeriod;
 
-        token.transferFrom(msg.sender, address(this), amount * scconversion);
+        token.transferFrom(msg.sender, address(this), amount * scconversion); 
         
-        _transfer(msg.sender, borrowerAdd, amount);
         emit Transfer( msg.sender, address(this), amount );
     }
 
@@ -132,22 +136,54 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
 
         drawnBalance += amount;
         token.transfer(msg.sender, amount * scconversion);
+
         // add in approval for repayment purpose token.approve(msg.sender, address(this), amount * scconversion);
         emit drawnDown(msg.sender, amount);
     }
 
     function loanRepayment( uint amount ) public {
-        require(token.allowance(msg.sender, address(this)) >= amount, "You have not approved the necessary amount for payment");
+        require(token.allowance(msg.sender, address(this)) >= amount * scconversion, "You have not approved the necessary amount for payment");
         require(token.balanceOf(msg.sender) >= amount, "You don't have sufficient amount in your stablecoin");
-        
+
+        // add in fee repayment
         token.transferFrom(msg.sender, address(this), amount * scconversion);
         emit repayLoan(msg.sender, amount);
+    }
+
+    function withdrawalApproval() public onlyOwner {
+        uint allowance;
+        require(balances[borrowerAdd] >= 0, "Borrower had no balance");
+        require(token.balanceOf(address(this)) >=  0, "Insufficient amount in contract to repay");
+        for (uint i = 1; i <= currentTid; i++) 
+        {   
+            address tempAddress = tokenId[i];
+            require(repaymentBalance[tempAddress] >= 0, "all loans are repaid");
+            allowance = token.allowance(address(this), tempAddress);
+            token.approve(tempAddress, (allowance + (repayment[tempAddress] * scconversion)));
+            repayToLender(tempAddress, repayment[tempAddress]);
+        }
+    }
+
+    function withdrawal(address lender, uint amount) public {
+        require(token.allowance(address(this), lender) >= amount * scconversion, "Do not have the allowance to withdraw, contact PeerHive admin");
+        require(balances[lender] >= amount, "Insufficient balance");
+        repaymentBalance[lender] -= amount;
+        token.transfer(lender, amount * scconversion);
+        emit Withdrawal(lender, amount);
     }
 
     function _transfer(address from, address to, uint256 amount) internal {
         balances[from] -= amount;
         balances[to] += amount;
         emit Transfer(from, to, amount);
+    }
+
+    function repayToLender(address to, uint amount) internal {
+        _transfer(borrowerAdd, to, amount);
+    }
+
+    function setURI(string memory newuri) public onlyOwner {
+        _setURI(newuri);
     }
 
 }
