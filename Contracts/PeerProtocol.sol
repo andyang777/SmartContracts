@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Version: 0.0.0
 pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -55,20 +56,22 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     uint public originationNominal;
 
 
-    event createLoan( address borrower, uint amount, uint fee, uint rate, uint period );
-    event Transfer( address _from, address _to, uint amount );
-    event Withdrawal(address _to, uint amount);
-    event drawnDown( address borrower, uint amount );
-    event repayLoan( address borrower, uint amount );
+    event createLoan( address borrower, uint amount, uint rate, uint period, uint timestamp, string method );
+    event Joined( address _from, address _to, uint amount, uint timestamp, string method );
+    event Withdrawal(address _to, uint amount, uint timestamp, string method);
+    event drawnDown( address borrower, uint amount, uint timestamp, string method );
+    event repayLoan( address borrower, uint amount, uint timestamp, string method );
+    event Transfer(address lender, address borrower, uint timestamp, uint amount, string method);
 
-    constructor(string memory _uri) initializer ERC1155(_uri) {
+    constructor(string memory _uri, address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate) initializer ERC1155(_uri) {
         principalAmount = 0;
         loanRate = 0;
         loanPeriod = 0;
         setURI(_uri);
+        newLoan(borrower, amount, rate, period, peerIRate, originateRate);
     }
 
-    function newLoan( address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate ) public onlyOwner {
+    function newLoan( address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate ) private onlyOwner {
 
         require(rate >= 10, "The lending rate must be at least 10 Basis Point (0.1%)");
         require(peerIRate < rate && peerIRate >= 40, "Fee Payable for PeerRate must be less than lending rate offered and at least 40 BP (0.4%)");
@@ -86,7 +89,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         loanDefault = false;
         loanStatus = true;
 
-        emit createLoan(borrower, principalLimit, feePayable, rate, period);
+        emit createLoan(borrower, principalLimit, rate, period, block.timestamp, "Loan Created");
     }
 
 
@@ -124,7 +127,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
 
         token.transferFrom(msg.sender, address(this), amount * scconversion); 
         
-        emit Transfer( msg.sender, address(this), amount );
+        emit Joined( msg.sender, address(this), amount, block.timestamp,  "Joined Loan");
     }
 
     function loanDrawn( uint amount ) public onlyOwner {
@@ -138,7 +141,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         token.transfer(msg.sender, amount * scconversion);
 
         // add in approval for repayment purpose token.approve(msg.sender, address(this), amount * scconversion);
-        emit drawnDown(msg.sender, amount);
+        emit drawnDown(msg.sender, amount, block.timestamp, "Capital Drawn");
     }
 
     function loanRepayment( uint amount ) public {
@@ -147,7 +150,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
 
         // add in fee repayment
         token.transferFrom(msg.sender, address(this), amount * scconversion);
-        emit repayLoan(msg.sender, amount);
+        emit repayLoan(msg.sender, amount, block.timestamp, "Loan Repaid");
     }
 
     function withdrawalApproval() public onlyOwner {
@@ -169,13 +172,13 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         require(balances[lender] >= amount, "Insufficient balance");
         repaymentBalance[lender] -= amount;
         token.transfer(lender, amount * scconversion);
-        emit Withdrawal(lender, amount);
+        emit Withdrawal(lender, amount, block.timestamp, "Withdraw");
     }
 
     function _transfer(address from, address to, uint256 amount) internal {
         balances[from] -= amount;
         balances[to] += amount;
-        emit Transfer(from, to, amount);
+        emit Transfer(from, to, amount, block.timestamp, "Transfer");
     }
 
     function repayToLender(address to, uint amount) internal {

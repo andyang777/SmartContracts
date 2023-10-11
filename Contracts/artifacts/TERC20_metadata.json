@@ -305,11 +305,11 @@
 			]
 		},
 		"Contracts/PeerProtocol.sol": {
-			"keccak256": "0x4d958fb3e34e9e8f4f130a91695319792ba92385015018612aface0b062d9cb7",
+			"keccak256": "0xf534a8d3db646cd0e8230d02e35a762c3c945bda6d336c574be1d3f6f29a3dd8",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://dfb7a5e1ac5ec77d17b3674916c78f8d5621defb30fcde77ce32f04710af0a07",
-				"dweb:/ipfs/QmYFum3A3ReGE1KhYzzi1wDSC8R4KJXWt47w6RYg8H82iK"
+				"bzz-raw://ae0e7360c0c08b0d0a5bf60e3563a62233e24a8ca05e7b685659ff0d868658b8",
+				"dweb:/ipfs/QmSPYftoDs41Ld3HSPWUqGbwyR9X9pbCbpgSwQqd8NDZXm"
 			]
 		}
 	},

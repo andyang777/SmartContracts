@@ -11,6 +11,36 @@
 						"internalType": "string",
 						"name": "_uri",
 						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "borrower",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rate",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "period",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "peerIRate",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "originateRate",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "nonpayable",
@@ -58,6 +88,43 @@
 				"anonymous": false,
 				"inputs": [
 					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "_from",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "_to",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "method",
+						"type": "string"
+					}
+				],
+				"name": "Joined",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
 						"indexed": true,
 						"internalType": "address",
 						"name": "previousOwner",
@@ -79,20 +146,32 @@
 					{
 						"indexed": false,
 						"internalType": "address",
-						"name": "_from",
+						"name": "lender",
 						"type": "address"
 					},
 					{
 						"indexed": false,
 						"internalType": "address",
-						"name": "_to",
+						"name": "borrower",
 						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
 					},
 					{
 						"indexed": false,
 						"internalType": "uint256",
 						"name": "amount",
 						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "method",
+						"type": "string"
 					}
 				],
 				"name": "Transfer",
@@ -205,6 +284,18 @@
 						"internalType": "uint256",
 						"name": "amount",
 						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "method",
+						"type": "string"
 					}
 				],
 				"name": "Withdrawal",
@@ -228,12 +319,6 @@
 					{
 						"indexed": false,
 						"internalType": "uint256",
-						"name": "fee",
-						"type": "uint256"
-					},
-					{
-						"indexed": false,
-						"internalType": "uint256",
 						"name": "rate",
 						"type": "uint256"
 					},
@@ -242,6 +327,18 @@
 						"internalType": "uint256",
 						"name": "period",
 						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "method",
+						"type": "string"
 					}
 				],
 				"name": "createLoan",
@@ -261,6 +358,18 @@
 						"internalType": "uint256",
 						"name": "amount",
 						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "method",
+						"type": "string"
 					}
 				],
 				"name": "drawnDown",
@@ -280,6 +389,18 @@
 						"internalType": "uint256",
 						"name": "amount",
 						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "method",
+						"type": "string"
 					}
 				],
 				"name": "repayLoan",
@@ -562,44 +683,6 @@
 					}
 				],
 				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "address",
-						"name": "borrower",
-						"type": "address"
-					},
-					{
-						"internalType": "uint256",
-						"name": "amount",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "rate",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "period",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "peerIRate",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "originateRate",
-						"type": "uint256"
-					}
-				],
-				"name": "newLoan",
-				"outputs": [],
-				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
@@ -1111,11 +1194,11 @@
 			]
 		},
 		"Contracts/PeerProtocol.sol": {
-			"keccak256": "0x4d958fb3e34e9e8f4f130a91695319792ba92385015018612aface0b062d9cb7",
+			"keccak256": "0xf534a8d3db646cd0e8230d02e35a762c3c945bda6d336c574be1d3f6f29a3dd8",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://dfb7a5e1ac5ec77d17b3674916c78f8d5621defb30fcde77ce32f04710af0a07",
-				"dweb:/ipfs/QmYFum3A3ReGE1KhYzzi1wDSC8R4KJXWt47w6RYg8H82iK"
+				"bzz-raw://ae0e7360c0c08b0d0a5bf60e3563a62233e24a8ca05e7b685659ff0d868658b8",
+				"dweb:/ipfs/QmSPYftoDs41Ld3HSPWUqGbwyR9X9pbCbpgSwQqd8NDZXm"
 			]
 		}
 	},
