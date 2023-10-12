@@ -1093,7 +1093,7 @@
 		"compilationTarget": {
 			"Contracts/PeerProtocol.sol": "PeerProtocol"
 		},
-		"evmVersion": "paris",
+		"evmVersion": "shanghai",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"

@@ -204,7 +204,7 @@
 		"compilationTarget": {
 			"Contracts/PeerProtocol.sol": "TERC20"
 		},
-		"evmVersion": "paris",
+		"evmVersion": "shanghai",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
