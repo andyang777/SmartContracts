@@ -32,7 +32,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     uint private dayConvention = 12;
     uint private scconversion = 1000000000000000000;
 
-    TERC20 private token = TERC20(address(0x1BD7B233B054AD4D1FBb767eEa628f28fdE314c6)); //USDT 
+    TERC20 private token = TERC20(address(0x652964Ba672c036029784555aC86B0a981eA6F03)); //XUSD 
     address public borrowerAdd;
     uint public principalLimit;
     uint public drawnBalance;
@@ -140,7 +140,6 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         drawnBalance += amount;
         token.transfer(msg.sender, amount * scconversion);
 
-        // add in approval for repayment purpose token.approve(msg.sender, address(this), amount * scconversion);
         emit drawnDown(msg.sender, amount, block.timestamp, "Capital Drawn");
     }
 
@@ -148,7 +147,6 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         require(token.allowance(msg.sender, address(this)) >= amount * scconversion, "You have not approved the necessary amount for payment");
         require(token.balanceOf(msg.sender) >= amount, "You don't have sufficient amount in your stablecoin");
 
-        // add in fee repayment
         token.transferFrom(msg.sender, address(this), amount * scconversion);
         emit repayLoan(msg.sender, amount, block.timestamp, "Loan Repaid");
     }

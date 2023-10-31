@@ -1,6 +1,6 @@
 {
 	"compiler": {
-		"version": "0.8.21+commit.d9974bed"
+		"version": "0.8.22+commit.4fc1097e"
 	},
 	"language": "Solidity",
 	"output": {
@@ -1194,11 +1194,11 @@
 			]
 		},
 		"Contracts/PeerProtocol.sol": {
-			"keccak256": "0xf534a8d3db646cd0e8230d02e35a762c3c945bda6d336c574be1d3f6f29a3dd8",
+			"keccak256": "0xd49db505238f88c0dde404350cd12bf1e27e634053c5e478b323911322442110",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://ae0e7360c0c08b0d0a5bf60e3563a62233e24a8ca05e7b685659ff0d868658b8",
-				"dweb:/ipfs/QmSPYftoDs41Ld3HSPWUqGbwyR9X9pbCbpgSwQqd8NDZXm"
+				"bzz-raw://54334392da14637acde2fea8a9116858e77fcbe36e5ed07346eee97adb4fc036",
+				"dweb:/ipfs/QmVJBWVGrCnNahCuckzQg7tYsipVb53Ga4K9xRCA1j4Mfw"
 			]
 		}
 	},
