@@ -55,6 +55,9 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     bool public loanStatus;
     uint public originationNominal;
 
+    uint public startDate;
+    uint public endDate;
+
 
     event createLoan( address borrower, uint amount, uint rate, uint period, uint timestamp, string method );
     event Joined( address _from, address _to, uint amount, uint timestamp, string method );
@@ -69,6 +72,8 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         loanPeriod = 0;
         setURI(_uri);
         newLoan(borrower, amount, rate, period, peerIRate, originateRate);
+        startDate = block.timestamp;  // Set start date to current block timestamp
+        endDate = startDate + (loanPeriod * 30 days);  // Calculate end date based on loan period
     }
 
     function newLoan( address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate ) private onlyOwner {
@@ -132,6 +137,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
 
     function loanDrawn( uint amount ) public onlyOwner {
         require( loanStatus, "The loan is active");
+        require(block.timestamp >= startDate, "Loan cannot be drawn before start date");  // Enforce start date
         require( amount >= 1, "Please withdraw amount more than 1");
         require( balances[msg.sender] <= amount , "You have entered an amount more than your balance");
         require( (token.balanceOf(address(this)) / scconversion ) >= amount, "Insufficient withdrawal amount");
@@ -144,6 +150,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     }
 
     function loanRepayment( uint amount ) public {
+        require(block.timestamp <= endDate, "Loan repayment period has ended");  // Enforce end date
         require(token.allowance(msg.sender, address(this)) >= amount * scconversion, "You have not approved the necessary amount for payment");
         require(token.balanceOf(msg.sender) >= amount, "You don't have sufficient amount in your stablecoin");
 
