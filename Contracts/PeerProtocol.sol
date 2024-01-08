@@ -32,7 +32,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     uint private dayConvention = 12;
     uint private scconversion = 1000000000000000000;
 
-    TERC20 private token = TERC20(address(0x652964Ba672c036029784555aC86B0a981eA6F03)); //XUSD 
+    TERC20 private token = TERC20(address(0x1BD7B233B054AD4D1FBb767eEa628f28fdE314c6)); //Polygon
     address public borrowerAdd;
     uint public principalLimit;
     uint public drawnBalance;
