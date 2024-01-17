@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT 
 // Version: 0.0.0
-pragma solidity ^0.8.21;
+pragma solidity >=0.7.3 <0.8.23;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -21,15 +21,16 @@ interface TERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-contract PeerProtocol is Initializable, Ownable, ERC1155{
+contract PeerProtocol is Initializable, Ownable, ERC1155 {
 
     mapping ( uint => address ) public tokenId;
     mapping ( address => uint ) public balances;
     mapping ( address => uint ) public repaymentBalance;
     mapping ( address => uint ) public repayment;
+    mapping ( address => uint ) public principalBalance;
 
     uint private tenthK = 10000;
-    uint private dayConvention = 12;
+    uint private dayConvention = 360;
     uint private scconversion = 1000000000000000000;
 
     TERC20 private token = TERC20(address(0x1BD7B233B054AD4D1FBb767eEa628f28fdE314c6)); //Polygon
@@ -66,22 +67,41 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     event repayLoan( address borrower, uint amount, uint timestamp, string method );
     event Transfer(address lender, address borrower, uint timestamp, uint amount, string method);
 
-    constructor(string memory _uri, address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate) initializer ERC1155(_uri) {
+    constructor(
+        string memory _uri, 
+        address borrower, 
+        uint amount, 
+        uint rate, 
+        uint period, 
+        uint peerIRate, 
+        uint originateRate,
+        uint startingDate,
+        uint endingDate
+        ) initializer ERC1155(_uri) {
         principalAmount = 0;
         loanRate = 0;
-        loanPeriod = 0;
+        loanPeriod = 0; // This will only accept in days factor
         setURI(_uri);
-        newLoan(borrower, amount, rate, period, peerIRate, originateRate);
-        startDate = block.timestamp;  // Set start date to current block timestamp
-        endDate = startDate + (loanPeriod * 30 days);  // Calculate end date based on loan period
+        newLoan(borrower, amount, rate, period, peerIRate, originateRate, startingDate, endingDate);
     }
 
-    function newLoan( address borrower, uint amount, uint rate, uint period, uint peerIRate, uint originateRate ) private onlyOwner {
+    function newLoan( 
+        address borrower, 
+        uint amount, 
+        uint rate, 
+        uint period, 
+        uint peerIRate, 
+        uint originateRate,
+        uint startingDate,
+        uint endingDate
+        ) private onlyOwner {
 
         require(rate >= 10, "The lending rate must be at least 10 Basis Point (0.1%)");
         require(peerIRate < rate && peerIRate >= 40, "Fee Payable for PeerRate must be less than lending rate offered and at least 40 BP (0.4%)");
         require(originateRate >= 50, "Origination fee must be at least 50 BP (0.5%)");
         require(period >= 1, "The loan period must be at least 1 Month");
+        require(startingDate < endingDate, "loan period issue, start date is later than end date");
+        require(block.timestamp < startingDate && block.timestamp < endingDate, "Contract creation date is later than loan start date");
         
 
         borrowerAdd = borrower;
@@ -90,6 +110,8 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         originationRate = originateRate;
         peerRate = peerIRate;
         loanPeriod = period;
+        startDate = startingDate;  // Set start date
+        endDate = endingDate;  // Set end date 
 
         loanDefault = false;
         loanStatus = true;
@@ -97,17 +119,12 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         emit createLoan(borrower, principalLimit, rate, period, block.timestamp, "Loan Created");
     }
 
-
-    function approve( uint amount) public returns (bool) {
-        token.approve(msg.sender, amount * scconversion);
-        return true;
-    }
-
     function joinLoan( uint amount ) public {
         require(loanStatus, "The loan is not created");
         require(amount >= 1, " Please invest in the loan more than 1");
         require(amount + principalAmount <= principalLimit, "You have exceeded the maximum principal of the loan");
         require((token.balanceOf(msg.sender) / scconversion) >= amount, "Insufficient amount");
+        require(block.timestamp < startDate, "Loan Participation is after start date");
         
         principalAmount += amount;
 
@@ -127,6 +144,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
         balances[borrowerAdd] += amount;
         repaymentBalance[msg.sender] += principalInt;
         repayment[msg.sender] = principalInt / loanPeriod;
+        principalBalance[msg.sender] += amount;
 
         monthlyFee = feePayable / loanPeriod;
 
@@ -137,7 +155,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
 
     function loanDrawn( uint amount ) public onlyOwner {
         require( loanStatus, "The loan is active");
-        require(block.timestamp >= startDate, "Loan cannot be drawn before start date");  // Enforce start date
+        require( block.timestamp >= startDate, "Loan cannot be drawn before start date");  // Enforce start date
         require( amount >= 1, "Please withdraw amount more than 1");
         require( balances[msg.sender] <= amount , "You have entered an amount more than your balance");
         require( (token.balanceOf(address(this)) / scconversion ) >= amount, "Insufficient withdrawal amount");
@@ -150,7 +168,6 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     }
 
     function loanRepayment( uint amount ) public {
-        require(block.timestamp <= endDate, "Loan repayment period has ended");  // Enforce end date
         require(token.allowance(msg.sender, address(this)) >= amount * scconversion, "You have not approved the necessary amount for payment");
         require(token.balanceOf(msg.sender) >= amount, "You don't have sufficient amount in your stablecoin");
 
@@ -160,8 +177,8 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
 
     function withdrawalApproval() public onlyOwner {
         uint allowance;
-        require(balances[borrowerAdd] >= 0, "Borrower had no balance");
-        require(token.balanceOf(address(this)) >=  0, "Insufficient amount in contract to repay");
+        require( balances[borrowerAdd] >= 0, "Borrower had no balance");
+        require( token.balanceOf(address(this)) >=  0, "Insufficient amount in contract to repay");
         for (uint i = 1; i <= currentTid; i++) 
         {   
             address tempAddress = tokenId[i];
@@ -173,9 +190,27 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     }
 
     function withdrawal(address lender, uint amount) public {
-        require(token.allowance(address(this), lender) >= amount * scconversion, "Do not have the allowance to withdraw, contact PeerHive admin");
-        require(balances[lender] >= amount, "Insufficient balance");
+        require( token.allowance(address(this), lender) >= amount * scconversion, "Do not have the allowance to withdraw, contact PeerHive admin");
+        require( balances[lender] >= amount, "Insufficient balance");
+        require( block.timestamp >= startDate + 30 days, "Withdrawal can only be done T+30");
         repaymentBalance[lender] -= amount;
+        token.transfer(lender, amount * scconversion);
+        emit Withdrawal(lender, amount, block.timestamp, "Withdraw");
+    }
+
+    function insufficientAmount() public {
+        require(((principalAmount * tenthK ) / principalLimit ) < 8000, "Loan participation is less than 80%");
+        require( block.timestamp < startDate, "Loan cannot be drawn before start date");  // Enforce start date
+        require( token.balanceOf(address(this)) > 0, "Insufficient loan amount");
+        loanDefault = false;
+        loanStatus = false;
+    }
+
+    function insufficientWithdrawal(address lender, uint amount) public {
+        require( ((principalAmount * tenthK ) / principalLimit ) < 8000, "Loan participation is less than 80%");
+        require( !loanDefault && !loanStatus, "Loan is still active, contact admin");
+        require( principalBalance[lender] > 0 && principalBalance[lender] >= amount, "You do not have any principal with this pool");
+        principalBalance[lender] -= amount;
         token.transfer(lender, amount * scconversion);
         emit Withdrawal(lender, amount, block.timestamp, "Withdraw");
     }
@@ -193,6 +228,4 @@ contract PeerProtocol is Initializable, Ownable, ERC1155{
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
     }
-
 }
-
