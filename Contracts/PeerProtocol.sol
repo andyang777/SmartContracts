@@ -38,7 +38,6 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
     uint public principalLimit;
     uint public drawnBalance;
     uint public originationRate;
-    uint public peerRate;
     uint public loanRate;
     uint public loanPeriod;
 
@@ -73,7 +72,6 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
         uint amount, 
         uint rate, 
         uint period, 
-        uint peerIRate, 
         uint originateRate,
         uint startingDate,
         uint endingDate
@@ -82,7 +80,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
         loanRate = 0;
         loanPeriod = 0; // This will only accept in days factor
         setURI(_uri);
-        newLoan(borrower, amount, rate, period, peerIRate, originateRate, startingDate, endingDate);
+        newLoan(borrower, amount, rate, period, originateRate, startingDate, endingDate);
     }
 
     function newLoan( 
@@ -90,14 +88,12 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
         uint amount, 
         uint rate, 
         uint period, 
-        uint peerIRate, 
         uint originateRate,
         uint startingDate,
         uint endingDate
         ) private onlyOwner {
 
         require(rate >= 10, "The lending rate must be at least 10 Basis Point (0.1%)");
-        require(peerIRate < rate && peerIRate >= 40, "Fee Payable for PeerRate must be less than lending rate offered and at least 40 BP (0.4%)");
         require(originateRate >= 50, "Origination fee must be at least 50 BP (0.5%)");
         require(period >= 1, "The loan period must be at least 1 Month");
         require(startingDate < endingDate, "loan period issue, start date is later than end date");
@@ -108,7 +104,6 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
         principalLimit = amount;
         loanRate = rate;
         originationRate = originateRate;
-        peerRate = peerIRate;
         loanPeriod = period;
         startDate = startingDate;  // Set start date
         endDate = endingDate;  // Set end date 
@@ -124,16 +119,15 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
         require(amount >= 1, " Please invest in the loan more than 1");
         require(amount + principalAmount <= principalLimit, "You have exceeded the maximum principal of the loan");
         require((token.balanceOf(msg.sender) / scconversion) >= amount, "Insufficient amount");
-        require(block.timestamp < startDate, "Loan Participation is after start date");
-        
+        require(block.timestamp <= startDate, "Loan Participation is after start date");
+
         principalAmount += amount;
 
         originationNominal = ( amount * originationRate ) / tenthK;
-        uint originationFee = ( originationNominal * ( 10000 + ( loanRate*loanPeriod ) / dayConvention )) / tenthK;
-        uint peerFee =  ( amount * ((peerRate*loanPeriod)/dayConvention)) / tenthK;
-        feePayable += peerFee + originationFee;
+        uint originationFee = ( originationNominal * ( 10000 + ( loanRate*loanPeriod ) / 12 )) / tenthK;
+        feePayable += originationFee;
 
-        uint principalInt = ( amount * ( 10000 + (( loanRate-peerRate ) * loanPeriod )/dayConvention))/ tenthK;
+        uint principalInt = ( amount * ( 10000 + (( loanRate ) * loanPeriod )/12))/ tenthK;
         principalPayable += principalInt;
 
         totalPayable = feePayable + principalPayable;
@@ -149,11 +143,11 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
         monthlyFee = feePayable / loanPeriod;
 
         token.transferFrom(msg.sender, address(this), amount * scconversion); 
-        
+
         emit Joined( msg.sender, address(this), amount, block.timestamp,  "Joined Loan");
     }
 
-    function loanDrawn( uint amount ) public onlyOwner {
+    function loanDrawn( uint amount ) public onlyBorrower {
         require( loanStatus, "The loan is active");
         require( block.timestamp >= startDate, "Loan cannot be drawn before start date");  // Enforce start date
         require( amount >= 1, "Please withdraw amount more than 1");
@@ -176,9 +170,14 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
     }
 
     function withdrawalApproval() public onlyOwner {
-        uint allowance;
+        uint contractBalance = token.balanceOf(address(this));
+        require(contractBalance > 0, "Insufficient amount in contract to repay");
+    
+        token.transfer(borrowerAdd, contractBalance);
+        /*uint allowance;
         require( balances[borrowerAdd] >= 0, "Borrower had no balance");
         require( token.balanceOf(address(this)) >=  0, "Insufficient amount in contract to repay");
+
         for (uint i = 1; i <= currentTid; i++) 
         {   
             address tempAddress = tokenId[i];
@@ -186,7 +185,7 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
             allowance = token.allowance(address(this), tempAddress);
             token.approve(tempAddress, (allowance + (repayment[tempAddress] * scconversion)));
             repayToLender(tempAddress, repayment[tempAddress]);
-        }
+        }*/
     }
 
     function withdrawal(address lender, uint amount) public {
@@ -227,5 +226,10 @@ contract PeerProtocol is Initializable, Ownable, ERC1155 {
 
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
+    }
+
+     modifier onlyBorrower() {
+        require(msg.sender == borrowerAdd, "Only borrower can perform this action");
+        _;
     }
 }
